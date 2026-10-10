@@ -1,0 +1,11 @@
+CREATE SCHEMA IF NOT EXISTS the_shelf;
+CREATE TABLE the_shelf.books (id text PRIMARY KEY,title text NOT NULL,author text NOT NULL,description text NOT NULL,price text NOT NULL,link text NOT NULL,subject text NOT NULL,status text NOT NULL,notes text NOT NULL,added text NOT NULL,kind text NOT NULL DEFAULT 'Book');
+CREATE TABLE the_shelf.settings (key text PRIMARY KEY,value text NOT NULL);
+CREATE TABLE the_shelf.supplies (id text PRIMARY KEY,name text NOT NULL,category text NOT NULL,quantity text NOT NULL,price text NOT NULL,link text NOT NULL,notes text NOT NULL,status text NOT NULL,added text NOT NULL);
+REVOKE ALL ON SCHEMA the_shelf FROM PUBLIC, anon, authenticated;
+ALTER TABLE the_shelf.books ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE the_shelf.books FROM PUBLIC, anon, authenticated;
+ALTER TABLE the_shelf.settings ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE the_shelf.settings FROM PUBLIC, anon, authenticated;
+ALTER TABLE the_shelf.supplies ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE the_shelf.supplies FROM PUBLIC, anon, authenticated;

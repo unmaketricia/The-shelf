@@ -1,0 +1,10 @@
+'use client';
+import {useEffect,useRef,useState} from 'react';
+import type {Book} from '@/lib/books';
+type Details=Partial<Pick<Book,'title'|'author'|'description'|'price'|'subject'>>;
+export default function BookLinkImport({kind,link,onLink,onImport,onBusy}:{kind:Book['kind'];link:string;onLink:(s:string)=>void;onImport:(d:Details,notes:string)=>void;onBusy:(busy:boolean)=>void}){
+ const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');const controller=useRef<AbortController|null>(null);
+ useEffect(()=>()=>controller.current?.abort(),[]);
+ async function fill(){setMessage('');setError('');if(!link.trim()){setError('Paste the resource’s link first.');return;}if(!URL.canParse(link)||!/^https?:\/\//.test(link)){setError('Use a full link starting with https://.');return;}setBusy(true);onBusy(true);controller.current=new AbortController();try{const r=await fetch('/api/books/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({link:link.trim()}),signal:controller.current.signal});const result:any=await r.json();if(!r.ok)throw Error(result.error);onImport(result.details,result.notes);setMessage(result.message);}catch(e){if((e as Error).name!=='AbortError')setError((e as Error).message||'Could not read this link. Enter the details manually below.');}finally{setBusy(false);onBusy(false);}}
+ return <div className="link-import"><label>{kind==='Subscription'?'Subscription website link':'Book product link'}<input type="url" placeholder="Paste the website’s https:// link" value={link} disabled={busy} onChange={e=>{onLink(e.target.value);setMessage('');setError('');}}/></label><button type="button" className="primary" disabled={busy} onClick={fill}>{busy?'Reading details…':'Fill from link'}</button><p>We’ll fill in available details for you to review. Some sites may require manual entry.</p>{message&&<p className="import-success" role="status">{message}</p>}{error&&<p className="error" role="alert">{error}</p>}</div>;
+}
