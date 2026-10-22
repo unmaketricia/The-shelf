@@ -7,7 +7,7 @@ function sameOrigin(r:Request){const origin=r.headers.get('origin');return !orig
 
 export async function GET(){
   try{
-    const result=await database().prepare("SELECT id,name,address,subject,to_char(scheduled_date,'YYYY-MM-DD') AS date,to_char(scheduled_time,'HH24:MI') AS time,added FROM classes ORDER BY scheduled_date,scheduled_time,name").all();
+    const result=await database().prepare('SELECT id,name,address,subject,schedule,monthly_fee AS "monthlyFee",annual_fee AS "annualFee",added FROM classes ORDER BY name,added').all();
     return Response.json(result.results,{headers:{'Cache-Control':'no-store'}});
   }catch(error){
     console.error('Classes could not load',error);
@@ -27,10 +27,10 @@ async function write(r:Request,editing:boolean){
     const item=parsed.data;
     const id=editing?input.id:crypto.randomUUID();
     if(typeof id!=='string'||!id||id.length>100)return Response.json({error:'Missing or invalid class ID.'},{status:400});
-    const values=[item.name,item.address,item.subject,item.date,item.time];
+    const values=[item.name,item.address,item.subject,JSON.stringify(item.schedule),item.monthlyFee,item.annualFee];
     const result=editing
-      ?await database().prepare('UPDATE classes SET name=?,address=?,subject=?,scheduled_date=?,scheduled_time=? WHERE id=?').bind(...values,id).run()
-      :await database().prepare('INSERT INTO classes (id,name,address,subject,scheduled_date,scheduled_time,added) VALUES (?,?,?,?,?,?,?)').bind(id,...values,new Date().toISOString()).run();
+      ?await database().prepare('UPDATE classes SET name=?,address=?,subject=?,schedule=?::jsonb,monthly_fee=?,annual_fee=? WHERE id=?').bind(...values,id).run()
+      :await database().prepare('INSERT INTO classes (id,name,address,subject,schedule,monthly_fee,annual_fee,added) VALUES (?,?,?,?,?::jsonb,?,?,?)').bind(id,...values,new Date().toISOString()).run();
     if(editing&&!result.meta.changes)return Response.json({error:'This class no longer exists. Reload the list.'},{status:404});
     return Response.json({id});
   }catch(error){

@@ -2,9 +2,9 @@
 
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {CalendarDays,Clock3,MapPin,Pencil,Plus,Trash2,X} from 'lucide-react';
-import {classSubjects,displayClassDate,displayClassTime,type ClassDraft,type HomeschoolClass} from '@/lib/classes';
+import {classSubjects,weekdays,displayClassTime,type ClassDraft,type HomeschoolClass} from '@/lib/classes';
 
-const blank:ClassDraft={name:'',address:'',subject:'Music',date:'',time:''};
+const blank:ClassDraft={name:'',address:'',subject:'Music',schedule:[],monthlyFee:'',annualFee:''};
 
 export default function Classes({canEdit}:{canEdit:boolean}){
   const [items,setItems]=useState<HomeschoolClass[]>([]);
@@ -38,7 +38,7 @@ export default function Classes({canEdit}:{canEdit:boolean}){
 
   function start(item?:HomeschoolClass){
     setEditing(item||null);
-    setDraft(item?{name:item.name,address:item.address,subject:item.subject,date:item.date,time:item.time}:{...blank});
+    setDraft(item?{name:item.name,address:item.address,subject:item.subject,schedule:item.schedule||[],monthlyFee:item.monthlyFee||'',annualFee:item.annualFee||''}:{...blank,schedule:[]});
     setFormError('');setOpen(true);
   }
   async function save(event:React.FormEvent){
@@ -66,10 +66,11 @@ export default function Classes({canEdit}:{canEdit:boolean}){
     <div className="heading"><div><p className="eyebrow">HOMESCHOOL ACTIVITIES</p><h1>Classes &amp; Workshops</h1></div>{canEdit&&<button className="primary" onClick={()=>start()}><Plus size={20}/> Add class / workshop</button>}</div>
     {notice&&<p className="notice" role="status">{notice}<button aria-label="Dismiss notification" onClick={()=>setNotice('')}><X size={16}/></button></p>}
     {error&&<div className="error" role="alert">{error} <button onClick={()=>void refresh()}>Try again</button></div>}
-    {loading?<p className="empty">Loading classes and workshops…</p>:!items.length?<div className="empty"><CalendarDays size={32}/><h2>No classes or workshops yet</h2>{canEdit&&<p>Add a class with its address, subject, date and time.</p>}</div>:<div className="class-list">{items.map(item=><article className="class-card" key={item.id}>
+    {loading?<p className="empty">Loading classes and workshops…</p>:!items.length?<div className="empty"><CalendarDays size={32}/><h2>No classes or workshops yet</h2>{canEdit&&<p>Add a class and fill in its schedule and fees whenever you’re ready.</p>}</div>:<div className="class-list">{items.map(item=><article className="class-card" key={item.id}>
       <span className="subject-tag">{item.subject}</span><h2>{item.name}</h2>
       <p className="class-detail"><MapPin size={18} aria-hidden="true"/><span>{item.address||'Address not added'}</span></p>
-      <div className="class-schedule"><p className="class-detail"><CalendarDays size={18} aria-hidden="true"/><time dateTime={item.date}>{displayClassDate(item.date)}</time></p><p className="class-detail"><Clock3 size={18} aria-hidden="true"/><time dateTime={item.time}>{displayClassTime(item.time)}</time></p></div>
+      <div className="weekly-schedule">{item.schedule?.length?item.schedule.map(entry=><p className="class-detail" key={entry.day}><Clock3 size={18} aria-hidden="true"/><span><strong>{entry.day}</strong>{entry.time?<time dateTime={entry.time}>{displayClassTime(entry.time)}</time>:<span className="muted">Time not set</span>}</span></p>):<p className="class-detail muted">Schedule not set</p>}</div>
+      {(item.monthlyFee||item.annualFee)&&<dl className="class-fees">{item.monthlyFee&&<div><dt>Monthly fee</dt><dd>{item.monthlyFee}</dd></div>}{item.annualFee&&<div><dt>Annual fee</dt><dd>{item.annualFee}</dd></div>}</dl>}
       {canEdit&&<div className="actions class-actions"><button disabled={removing===item.id} onClick={()=>start(item)} aria-label={`Edit ${item.name}`}><Pencil size={17}/> Edit</button><button disabled={removing===item.id} onClick={()=>void remove(item)} aria-label={`Remove ${item.name}`}><Trash2 size={17}/>{removing===item.id?'Removing…':'Remove'}</button></div>}
     </article>)}</div>}
     <dialog ref={dialog} className="modal supply-dialog" aria-labelledby="class-form-title" onCancel={event=>{if(saving)event.preventDefault();else setOpen(false);}}>
@@ -78,7 +79,8 @@ export default function Classes({canEdit}:{canEdit:boolean}){
         <label>Name<input autoFocus required maxLength={300} value={draft.name} onChange={event=>setDraft({...draft,name:event.target.value})}/></label>
         <label>Address<textarea rows={2} maxLength={1000} placeholder="Venue and full address, or Online" value={draft.address} onChange={event=>setDraft({...draft,address:event.target.value})}/></label>
         <label>Subject<select value={draft.subject} onChange={event=>setDraft({...draft,subject:event.target.value as ClassDraft['subject']})}>{classSubjects.map(subject=><option key={subject}>{subject}</option>)}</select></label>
-        <div className="class-date-time"><label>Date<input type="date" required value={draft.date} onChange={event=>setDraft({...draft,date:event.target.value})}/></label><label>Time<input type="time" required value={draft.time} onChange={event=>setDraft({...draft,time:event.target.value})}/></label></div>
+        <fieldset className="weekday-picker"><legend>Schedule <span className="muted">(optional)</span></legend>{weekdays.map(day=>{const entry=draft.schedule.find(item=>item.day===day);return <div className="weekday-row" key={day}><label className="weekday-choice"><input type="checkbox" checked={!!entry} onChange={event=>setDraft(current=>({...current,schedule:event.target.checked?[...current.schedule,{day,time:''}]:current.schedule.filter(item=>item.day!==day)}))}/>{day}</label>{entry&&<label className="weekday-time"><span>Time <span className="muted">(optional)</span></span><input aria-label={`${day} time`} type="time" value={entry.time} onChange={event=>setDraft(current=>({...current,schedule:current.schedule.map(item=>item.day===day?{...item,time:event.target.value}:item)}))}/></label>}</div>;})}</fieldset>
+        <div className="class-date-time"><label>Monthly fee <span className="muted">(optional)</span><input placeholder="e.g. ₱2,000" maxLength={300} value={draft.monthlyFee} onChange={event=>setDraft({...draft,monthlyFee:event.target.value})}/></label><label>Annual fee <span className="muted">(optional)</span><input placeholder="e.g. ₱20,000" maxLength={300} value={draft.annualFee} onChange={event=>setDraft({...draft,annualFee:event.target.value})}/></label></div>
         {formError&&<p className="error" role="alert">{formError}</p>}
         <div className="form-buttons"><button type="button" onClick={()=>setOpen(false)}>Cancel</button><button className="primary">{saving?'Saving…':'Save class'}</button></div>
       </fieldset></form>
